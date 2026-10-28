@@ -17,10 +17,11 @@ cmake_build()
     fi
 
     cmake -S ${BUILD_DIR} -B ${OUT} ${BUILD_METHOD} \
-        -DCMAKE_SYSTEM_NAME="Windows" \
         -DCMAKE_BUILD_TYPE="Release" \
-        -DCMAKE_C_COMPILER="gcc" \
-        -DCMAKE_CXX_COMPILER="g++" \
+        -DCMAKE_C_COMPILER="clang" \
+        -DCMAKE_CXX_COMPILER="clang++" \
+        -DCMAKE_C_FLAGS="" \
+        -DCMAKE_CXX_FLAGS="" \
         -DENABLE_FULL_LTO="OFF" \
         -DMAX_BLOCK_SIZE="4096"
 
