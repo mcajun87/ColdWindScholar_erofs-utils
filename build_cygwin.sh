@@ -20,15 +20,16 @@ cmake_build()
     fi
 
     if [[ $TARGET == "Cygwin" ]]; then
-        export PATH="/usr/x86_64-pc-cygwin/bin:${PATH}"
-        export LD_LIBRARY_PATH="/usr/x86_64-pc-cygwin/lib:${LD_LIBRARY_PATH}"
+        export PATH="/usr/bin:${PATH}"
+        export LD_LIBRARY_PATH="/usr/lib:${LD_LIBRARY_PATH}"
+
         cmake -S ${BUILD_DIR} -B ${OUT} ${BUILD_METHOD} \
             -DCMAKE_SYSTEM_NAME="CYGWIN" \
             -DCMAKE_BUILD_TYPE="Release" \
             -DCMAKE_C_COMPILER_LAUNCHER="ccache" \
             -DCMAKE_CXX_COMPILER_LAUNCHER="ccache" \
-            -DCMAKE_C_COMPILER="x86_64-pc-cygwin-clang" \
-            -DCMAKE_CXX_COMPILER="x86_64-pc-cygwin-clang++" \
+            -DCMAKE_C_COMPILER="clang" \
+            -DCMAKE_CXX_COMPILER="clang++" \
             -DCMAKE_C_FLAGS="" \
             -DCMAKE_CXX_FLAGS="" \
             -DENABLE_FULL_LTO="OFF" \
@@ -68,7 +69,7 @@ build()
         echo "复制文件中..."
         [[ ! -d "$TARGET_DIR_PATH" ]] && mkdir -p ${TARGET_DIR_PATH}
         cp -af $BUILD/*.erofs${EXT} ${TARGET_DIR_PATH}
-        cp -af "/usr/x86_64-pc-cygwin/bin/cygwin1.dll" ${TARGET_DIR_PATH}
+        cp -af "/usr/bin/cygwin1.dll" ${TARGET_DIR_PATH}
         touch -c -d "2009-01-01 00:00:00" ${TARGET_DIR_PATH}/*
         echo "编译成功: ${TARGE_DIR_NAME}"
     else
