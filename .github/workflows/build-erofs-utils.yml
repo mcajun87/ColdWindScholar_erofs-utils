@@ -1,4 +1,4 @@
-name: Build erofs-utils
+name:构建Build erofs-utils
 on:
   push:
     branches: [ "dev" ]
