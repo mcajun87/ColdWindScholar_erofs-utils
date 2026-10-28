@@ -1,0 +1,96 @@
+name: Build Linux
+
+on:
+  push:
+    branches: [ "dev" ]
+  workflow_dispatch:
+
+jobs:
+  Build-on-linux:
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC-8
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
+      CCACHE_BASEDIR: "${{ github.workspace }}"
+      CUSTOM_CLANG_PATH: "/opt/clang"
+      GCC_AARCH64_TOOLS_PATH: "/opt/gcc"
+      GCC_LOONGARCH64_TOOLS_PATH: "/opt/loongarch64"
+
+    steps:
+      - name: Setup clang+llvm
+        run: |
+          apt list --installed | grep -E "^clang-[0-9]" | cut -d"/" -f1 | xargs -i sudo apt remove --autoremove {}
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/$(lsb_release -sc)/ llvm-toolchain-$(lsb_release -sc)-23 main" | sudo tee /etc/apt/sources.list.d/apt.llvm.org.list
+          sudo apt update && sudo apt install clang llvm lld
+
+      - name: Setup gcc-aarch64 tools
+        run: |
+          sudo apt update && sudo apt install cpp-14-aarch64-linux-gnu gcc-14-aarch64-linux-gnu g++-14-aarch64-linux-gnu
+
+      - name: Setup gcc-loongarch64 tools
+        run: |
+          sudo apt update && sudo apt install cpp-14-loongarch64-linux-gnu gcc-14-loongarch64-linux-gnu g++-14-loongarch64-linux-gnu
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}
+          restore-keys: ${{ runner.os }}
+
+      - name: Build erofs-utils
+        run: |
+          chmod a+x build.sh
+          ./build.sh Linux
+
+      - name: Prepare artifact
+        if: success()
+        id: Artifact
+        run: |
+          echo "linuxX86x64Dir=target/Linux_x86_64" >> $GITHUB_OUTPUT
+          linuxX86x64Name=`ls -d target/Linux_x86_64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "linuxX86x64Name=$linuxX86x64Name" >> $GITHUB_OUTPUT
+
+          echo "wslX86x64Dir=target/WSL_x86_64" >> $GITHUB_OUTPUT
+          wslX86x64Name=`ls -d target/WSL_x86_64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "wslX86x64Name=$wslX86x64Name" >> $GITHUB_OUTPUT
+
+          echo "linuxAarch64Dir=target/Linux_aarch64" >> $GITHUB_OUTPUT
+          linuxAarch64Name=`ls -d target/Linux_aarch64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "linuxAarch64Name=$linuxAarch64Name" >> $GITHUB_OUTPUT
+
+          echo "linuxLoongarch64Dir=target/Linux_loongarch64" >> $GITHUB_OUTPUT
+          linuxLoongarch64Name=`ls -d target/Linux_loongarch64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "linuxLoongarch64Name=$linuxLoongarch64Name" >> $GITHUB_OUTPUT
+
+      - name: Upload erofs-utils Linux_x86_64
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.Artifact.outputs.linuxX86x64Name }}
+          path: '${{ steps.Artifact.outputs.linuxX86x64Dir }}/${{ steps.Artifact.outputs.linuxX86x64Name }}/*'
+
+      - name: Upload erofs-utils WSL_x86_64
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.Artifact.outputs.wslX86x64Name }}
+          path: '${{ steps.Artifact.outputs.wslX86x64Dir }}/${{ steps.Artifact.outputs.wslX86x64Name }}/*'
+
+      - name: Upload erofs-utils Linux_aarch64
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.Artifact.outputs.linuxAarch64Name }}
+          path: '${{ steps.Artifact.outputs.linuxAarch64Dir }}/${{ steps.Artifact.outputs.linuxAarch64Name }}/*'
+
+      - name: Upload erofs-utils Linux_loongarch64
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.Artifact.outputs.linuxLoongarch64Name }}
+          path: '${{ steps.Artifact.outputs.linuxLoongarch64Dir }}/${{ steps.Artifact.outputs.linuxLoongarch64Name }}/*'
