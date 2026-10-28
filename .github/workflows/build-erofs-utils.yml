@@ -192,6 +192,14 @@ jobs:
           name: ${{ steps.Artifact.outputs.wslX86x64Name }}
           path: '${{ steps.Artifact.outputs.wslX86x64Dir }}/${{ steps.Artifact.outputs.wslX86x64Name }}/*'
 
+      - name: Setup gcc-aarch64 tools
+        run: |
+          sudo apt update && sudo apt install cpp-14-aarch64-linux-gnu gcc-14-aarch64-linux-gnu g++-14-aarch64-linux-gnu
+
+      - name: Setup gcc-loongarch64 tools
+        run: |
+          sudo apt update && sudo apt install cpp-14-loongarch64-linux-gnu gcc-14-loongarch64-linux-gnu g++-14-loongarch64-linux-gnu
+
       - name: Upload erofs-utils Linux_aarch64
         if: success()
         uses: actions/upload-artifact@v4
@@ -220,7 +228,10 @@ jobs:
       - name: Setup cygwin cross toolchains
         run: |
           echo "${{ env.cygwin_prebuilt_packages }}" | sudo tee /etc/apt/sources.list.d/deb-cygwin.list
-          sudo apt update && sudo apt install cygwin cygwin-gcc cygwin-libiconv cygwin-xclang cygwin-libc++ cygwin-libxml2
+          sudo apt update
+          sudo apt install cygwin cygwin-gcc cygwin-libiconv cygwin-xclang cygwin-libc++
+          wget -O /tmp/setup-x86_64.exe https://cygwin.com/setup-x86_64.exe
+          /tmp/setup-x86_64.exe -q --no-desktop --no-startmenu --site https://mirrors.kernel.org/sourceware/cygwin/ --packages libxml2
 
       - name: Checkout
         uses: actions/checkout@v4
