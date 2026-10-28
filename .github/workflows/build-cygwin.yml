@@ -16,32 +16,70 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Install Cygwin and required packages
+      - name: Install Cygwin using official setup.exe
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
+
           $cygwinRoot = "C:\cygwin64"
           $setup = "$cygwinRoot\setup-x86_64.exe"
           $site = "https://mirrors.kernel.org/sourceware/cygwin/"
+
           New-Item -ItemType Directory -Force -Path $cygwinRoot | Out-Null
+          New-Item -ItemType Directory -Force -Path "$cygwinRoot\packages" | Out-Null
+
           Invoke-WebRequest -Uri "https://cygwin.com/setup-x86_64.exe" -OutFile $setup
-          & $setup -q --no-desktop --no-startmenu --site $site --root $cygwinRoot --local-package-dir "$cygwinRoot\packages" --packages gcc-core,gcc-g++,make,clang,libxml2-devel,libiconv,libgcc1,pkg-config
+
+          & $setup `
+            --quiet-mode `
+            --no-admin `
+            --no-shortcuts `
+            --no-startmenu `
+            --site $site `
+            --root $cygwinRoot `
+            --local-package-dir "$cygwinRoot\packages" `
+            --packages "gcc-core,gcc-g++,make,clang,libiconv,libxml2-devel,pkg-config"
+
+          if (-not (Test-Path "$cygwinRoot\bin\bash.exe")) {
+            throw "Cygwin installation failed: bash.exe was not created."
+          }
+
+      - name: Verify Cygwin environment
+        shell: powershell
+        run: |
+          $cygwinRoot = "C:\cygwin64"
+          if (-not (Test-Path "$cygwinRoot\bin\bash.exe")) {
+            throw "Cygwin bash.exe is missing."
+          }
+          & "$cygwinRoot\bin\bash.exe" -lc 'echo "Cygwin OK"; uname -a'
 
       - name: Build erofs-utils
         shell: powershell
         run: |
-          $env:Path = "C:\cygwin64\bin;$env:Path"
-          & "C:\cygwin64\bin\bash.exe" -lc "cd $env:GITHUB_WORKSPACE; chmod +x build_cygwin.sh; ./build_cygwin.sh"
+          $cygwinRoot = "C:\cygwin64"
+          $env:Path = "$cygwinRoot\bin;$env:Path"
+
+          & "$cygwinRoot\bin\bash.exe" -lc "
+            cd '$env:GITHUB_WORKSPACE'
+            chmod +x build_cygwin.sh
+            ./build_cygwin.sh
+          "
 
       - name: Prepare artifact
         if: success()
-        id: Artifact
+        shell: powershell
         run: |
-          echo "cygwinX86x64Dir=target/Cygwin_x86_64" >> $GITHUB_OUTPUT
-          cygwinX86x64Name=`ls -d target/Cygwin_x86_64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "cygwinX86x64Name=$cygwinX86x64Name" >> $GITHUB_OUTPUT
+          $cygwinX86x64Dir = "target/Cygwin_x86_64"
+          $items = Get-ChildItem -Path $cygwinX86x64Dir -Directory | Select-Object -First 1
+          if (-not $items) {
+            throw "No Cygwin package directory was produced."
+          }
+          "cygwinX86x64Dir=$cygwinX86x64Dir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "cygwinX86x64Name=$($items.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Upload erofs-utils Cygwin_x86_64
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.Artifact.outputs.cygwinX86x64Name }}
-          path: "${{ steps.Artifact.outputs.cygwinX86x64Dir }}/${{ steps.Artifact.outputs.cygwinX86x64Name }}/*"
+          name: ${{ steps.PrepareArtifact.outputs.cygwinX86x64Name }}
+          path: "${{ steps.PrepareArtifact.outputs.cygwinX86x64Dir }}/${{ steps.PrepareArtifact.outputs.cygwinX86x64Name }}/*"
