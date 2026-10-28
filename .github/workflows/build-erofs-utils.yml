@@ -229,13 +229,13 @@ jobs:
           $site = "https://mirrors.kernel.org/sourceware/cygwin/"
           New-Item -ItemType Directory -Force -Path $cygwinRoot | Out-Null
           Invoke-WebRequest -Uri "https://cygwin.com/setup-x86_64.exe" -OutFile $setup
-          & $setup -q --no-desktop --no-startmenu --site $site --root $cygwinRoot --local-package-dir "$cygwinRoot\packages" --packages libxml2,libxml2-devel,gcc-g++,make,clang,clang++,pkg-config
+          & $setup -q --no-desktop --no-startmenu --site $site --root $cygwinRoot --local-package-dir "$cygwinRoot\packages" --packages gcc-core,gcc-g++,make,clang,libxml2-devel,libiconv,libgcc1,pkg-config
 
       - name: Build erofs-utils
-        shell: bash
+        shell: powershell
         run: |
-          chmod a+x build_cygwin.sh
-          ./build_cygwin.sh
+          $env:Path = "C:\cygwin64\bin;$env:Path"
+          & "C:\cygwin64\bin\bash.exe" -lc "cd $env:GITHUB_WORKSPACE; chmod +x build_cygwin.sh; ./build_cygwin.sh"
 
       - name: Prepare artifact
         if: success()
