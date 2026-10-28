@@ -1,0 +1,60 @@
+name: Build macOS
+
+on:
+  push:
+    branches: [ "dev" ]
+  workflow_dispatch:
+
+jobs:
+  Build-on-macOS:
+    runs-on: macos-latest
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
+      CCACHE_BASEDIR: "${{ github.workspace }}"
+
+    steps:
+      - name: Install dependencies
+        run: brew install ccache
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}
+          restore-keys: ${{ runner.os }}
+
+      - name: Build erofs-utils
+        run: |
+          chmod a+x build_darwin.sh
+          ./build_darwin.sh
+
+      - name: Prepare artifact
+        if: success()
+        id: prepareArtifact
+        run: |
+          echo "darwinX86x64Dir=target/Darwin_x86_64" >> $GITHUB_OUTPUT
+          darwinX86x64Name=`ls -d target/Darwin_x86_64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "darwinX86x64Name=$darwinX86x64Name" >> $GITHUB_OUTPUT
+
+          echo "darwinAarch64Dir=target/Darwin_aarch64" >> $GITHUB_OUTPUT
+          darwinAarch64Name=`ls -d target/Darwin_aarch64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "darwinAarch64Name=$darwinAarch64Name" >> $GITHUB_OUTPUT
+
+      - name: Upload erofs-utils Darwin_x86_64
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepareArtifact.outputs.darwinX86x64Name }}
+          path: '${{ steps.prepareArtifact.outputs.darwinX86x64Dir }}/${{ steps.prepareArtifact.outputs.darwinX86x64Name }}/*'
+
+      - name: Upload erofs-utils Darwin_aarch64
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepareArtifact.outputs.darwinAarch64Name }}
+          path: '${{ steps.prepareArtifact.outputs.darwinAarch64Dir }}/${{ steps.prepareArtifact.outputs.darwinAarch64Name }}/*'
