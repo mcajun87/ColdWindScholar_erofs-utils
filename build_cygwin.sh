@@ -11,7 +11,7 @@ cmake_build()
     local ABI=$3
 
     local MAKE_CMD=""
-    local BUILD_METHOD=
+    local BUILD_METHOD=""
     if [[ $METHOD == "Ninja" ]]; then
         BUILD_METHOD="-G Ninja"
         MAKE_CMD="ninja -C $OUT"
