@@ -1,0 +1,47 @@
+name: Build Cygwin
+
+on:
+  push:
+    branches: [ "dev" ]
+  workflow_dispatch:
+
+jobs:
+  Build-cygwin:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Install Cygwin and required packages
+        shell: powershell
+        run: |
+          $cygwinRoot = "C:\cygwin64"
+          $setup = "$cygwinRoot\setup-x86_64.exe"
+          $site = "https://mirrors.kernel.org/sourceware/cygwin/"
+          New-Item -ItemType Directory -Force -Path $cygwinRoot | Out-Null
+          Invoke-WebRequest -Uri "https://cygwin.com/setup-x86_64.exe" -OutFile $setup
+          & $setup -q --no-desktop --no-startmenu --site $site --root $cygwinRoot --local-package-dir "$cygwinRoot\packages" --packages gcc-core,gcc-g++,make,clang,libxml2-devel,libiconv,libgcc1,pkg-config
+
+      - name: Build erofs-utils
+        shell: powershell
+        run: |
+          $env:Path = "C:\cygwin64\bin;$env:Path"
+          & "C:\cygwin64\bin\bash.exe" -lc "cd $env:GITHUB_WORKSPACE; chmod +x build_cygwin.sh; ./build_cygwin.sh"
+
+      - name: Prepare artifact
+        if: success()
+        id: Artifact
+        run: |
+          echo "cygwinX86x64Dir=target/Cygwin_x86_64" >> $GITHUB_OUTPUT
+          cygwinX86x64Name=`ls -d target/Cygwin_x86_64/erofs-utils-v*/ | awk -F '(/|.zip)' '{print $3}'` && echo "cygwinX86x64Name=$cygwinX86x64Name" >> $GITHUB_OUTPUT
+
+      - name: Upload erofs-utils Cygwin_x86_64
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.Artifact.outputs.cygwinX86x64Name }}
+          path: "${{ steps.Artifact.outputs.cygwinX86x64Dir }}/${{ steps.Artifact.outputs.cygwinX86x64Name }}/*"
