@@ -20,6 +20,7 @@ cmake_build()
     fi
 
     if [[ $TARGET == "Cygwin" ]]; then
+        export PATH="/usr/x86_64-pc-cygwin/bin:${PATH}"
         export LD_LIBRARY_PATH="/usr/x86_64-pc-cygwin/lib:${LD_LIBRARY_PATH}"
         cmake -S ${BUILD_DIR} -B ${OUT} ${BUILD_METHOD} \
             -DCMAKE_SYSTEM_NAME="CYGWIN" \
