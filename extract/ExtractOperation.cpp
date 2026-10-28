@@ -59,12 +59,12 @@ namespace skkk {
 				return RET_EXTRACT_OUTDIR_ROOT;
 			}
 #if !(defined(_WIN32) || defined(__CYGWIN__))
-			const char *oDir = outDir.c_str();
-			auto oSize = outDir.size();
-			// check dir is root: "/","//","///",...
-			bool isRoot = true;
-			for (int i = 0; i < oSize; i++) {
-				isRoot = oDir[i] == '/';
+			bool isRoot = !outDir.empty();
+			for (char ch : outDir) {
+				if (ch != '/') {
+					isRoot = false;
+					break;
+				}
 			}
 			if (isRoot) {
 				LOGCE("Not allow extracting to root: '%s'", outDir.c_str());
